@@ -174,7 +174,7 @@ void Osmap::mapSave(const string givenFilename, bool pauseThreads){
 	clearVectors();
 
 	if(pauseThreads)
-	  system.mpViewer->Release();
+	  if (system.mpViewer) system.mpViewer->Release();
 }
 
 void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
@@ -195,9 +195,9 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 
 		// Stop LocalMapping and Viewer
 		system.mpLocalMapper->RequestStop();
-		system.mpViewer	    ->RequestStop();
+		if (system.mpViewer) system.mpViewer	    ->RequestStop();
 		while(!system.mpLocalMapper->isStopped()) usleep(1000);
-		while(!system.mpViewer     ->isStopped()) usleep(1000);
+		if (system.mpViewer) while(!system.mpViewer     ->isStopped()) usleep(1000);
 	}
 
 #if !defined OSMAP_DUMMY_MAP && !defined OS1
@@ -211,7 +211,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 #endif
 
 	LOGV(system.mpLocalMapper->isStopped())
-	LOGV(system.mpViewer     ->isStopped())
+	if (system.mpViewer) LOGV(system.mpViewer     ->isStopped())
 
 	string filename;
 	int intOptions;
@@ -243,6 +243,9 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 	// Change directory
 	string pathDirectory;
 	parsePath(yamlFilename, NULL, &pathDirectory);
+	char buf[4096];
+	getcwd(buf, 4096);
+	std::string current_dir(buf);
 	if(pathDirectory != "")
 		chdir(pathDirectory.c_str());
 
@@ -297,6 +300,11 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 		// Invoked after viewer.Release() because of mutex.
 		system.mpFrameDrawer->Update(system.mpTracker);
 	}
+
+	// Go back to the initial working directory
+	if(current_dir != "")
+		chdir(current_dir.c_str());
+
 }
 
 int Osmap::MapPointsSave(string filename){
