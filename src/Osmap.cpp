@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <opencv2/core/core.hpp>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <Eigen/Dense>
 
 #include "Osmap.h"
 
@@ -115,6 +116,20 @@ void Osmap::mapSave(const string givenFilename, bool pauseThreads){
 	  headerFile << "nMappoints" << MapPointsSave(filename);
 	}
 
+	// MapObjects
+	// if(!options[NO_MAPPOINTS_FILE]){
+	  // Order mappoints by mnId
+	  getMapObjectsFromMap();
+
+	  // New file
+	  filename = baseFilename + ".mapobjects";
+
+	  // Serialize
+	  cout << "Saving " << filename << endl;
+	  headerFile << "mapobjectsFile" << filename;
+	  headerFile << "nMapobjects" << MapObjectsSave(filename);
+	// }
+
 	// K: grab camera calibration matrices.  Will be saved to yaml file later.
 	if(!options[K_IN_KEYFRAME]) getVectorKFromKeyframes();
 
@@ -174,7 +189,7 @@ void Osmap::mapSave(const string givenFilename, bool pauseThreads){
 	clearVectors();
 
 	if(pauseThreads)
-	  if (system.mpViewer) system.mpViewer->Release();
+	  system.mpViewer->Release();
 }
 
 void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
@@ -195,9 +210,9 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 
 		// Stop LocalMapping and Viewer
 		system.mpLocalMapper->RequestStop();
-		if (system.mpViewer) system.mpViewer	    ->RequestStop();
+		system.mpViewer	    ->RequestStop();
 		while(!system.mpLocalMapper->isStopped()) usleep(1000);
-		if (system.mpViewer) while(!system.mpViewer     ->isStopped()) usleep(1000);
+		while(!system.mpViewer     ->isStopped()) usleep(1000);
 	}
 
 #if !defined OSMAP_DUMMY_MAP && !defined OS1
@@ -211,7 +226,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 #endif
 
 	LOGV(system.mpLocalMapper->isStopped())
-	if (system.mpViewer) LOGV(system.mpViewer     ->isStopped())
+	LOGV(system.mpViewer     ->isStopped())
 
 	string filename;
 	int intOptions;
@@ -243,9 +258,6 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 	// Change directory
 	string pathDirectory;
 	parsePath(yamlFilename, NULL, &pathDirectory);
-	char buf[4096];
-	getcwd(buf, 4096);
-	std::string current_dir(buf);
 	if(pathDirectory != "")
 		chdir(pathDirectory.c_str());
 
@@ -300,11 +312,6 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 		// Invoked after viewer.Release() because of mutex.
 		system.mpFrameDrawer->Update(system.mpTracker);
 	}
-
-	// Go back to the initial working directory
-	if(current_dir != "")
-		chdir(current_dir.c_str());
-
 }
 
 int Osmap::MapPointsSave(string filename){
@@ -335,6 +342,24 @@ int Osmap::MapPointsLoad(string filename){
 
 	file.close();
 	return nMP;
+}
+
+
+int Osmap::MapObjectsSave(string filename){
+	ofstream file;
+	file.open(filename, std::ofstream::binary);
+
+	// Serialize
+	SerializedMapobjectArray serializedMapobjectArray;
+	int nMO = serialize(vectorMapObjects, serializedMapobjectArray);
+
+	// Closing
+	if (!serializedMapobjectArray.SerializeToOstream(&file))
+		// Signals the error
+		nMO = -1;
+	file.close();
+
+	return nMO;
 }
 
 int Osmap::KeyFramesSave(string filename){
@@ -454,6 +479,13 @@ void Osmap::getMapPointsFromMap(){
 void Osmap::setMapPointsToMap(){
 	map.mspMapPoints.clear();
 	copy(vectorMapPoints.begin(), vectorMapPoints.end(), inserter(map.mspMapPoints, map.mspMapPoints.end()));
+}
+
+void Osmap::getMapObjectsFromMap(){
+	  vectorMapObjects.clear();
+	  vectorMapObjects.reserve(map.map_objects_.size());
+	  std::transform(map.map_objects_.begin(), map.map_objects_.end(), std::back_inserter(vectorMapObjects), [](MapObject *pMO)->OsmapMapObject*{return static_cast<OsmapMapObject*>(pMO);});
+	  sort(vectorMapObjects.begin(), vectorMapObjects.end(), [](const MapObject* a, const MapObject* b){return a->id < b->id;});
 }
 
 void Osmap::getKeyFramesFromMap(){
@@ -818,6 +850,23 @@ void Osmap::deserialize(const SerializedPose &serializedPose, Mat &m){
 }
 
 
+// Ellipsoid ================================================================================================
+void Osmap::serialize(const Ellipsoid &m, SerializedEllipsoid *serializedEllipsoid){
+  const double* e = m.AsDual().data();
+  for (int i = 0; i < 16; ++i)
+	serializedEllipsoid->add_element(e[i]);
+}
+
+void Osmap::deserialize(const SerializedEllipsoid &serializedEllipsoid, Ellipsoid &m){
+  assert(serializedEllipsoid.element_size() == 16);
+  Eigen::Matrix4d Q_star;
+  double *d = Q_star.data();
+  for(unsigned int i = 0; i < 16; i++) {
+	d[i] = serializedEllipsoid.element(i);
+  }
+  m = Ellipsoid(Q_star);
+}
+
 // Position ================================================================================================
 void Osmap::serialize(const Mat &m, SerializedPosition *serializedPosition){
   serializedPosition->set_x(m.at<float>(0,0));
@@ -885,6 +934,21 @@ int Osmap::deserialize(const SerializedMappointArray &serializedMappointArray, v
 	vectorMapPoints.push_back(deserialize(serializedMappointArray.mappoint(i)));
 
   return i;
+}
+
+
+
+// MapObject ================================================================================================
+void Osmap::serialize(const OsmapMapObject &mapobject, SerializedMapobject *serializedMapobject){
+  serializedMapobject->set_id(mapobject.id);
+  serialize(mapobject.ellipsoid_, serializedMapobject->mutable_ellipsoid());
+}
+
+int Osmap::serialize(const vector<OsmapMapObject*>& vectorMO, SerializedMapobjectArray &serializedMapobjectArray){
+  for(auto pMO : vectorMO)
+    serialize(*pMO, serializedMapobjectArray.add_mapobject());
+
+  return vectorMO.size();
 }
 
 

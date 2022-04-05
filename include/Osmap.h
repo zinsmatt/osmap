@@ -46,6 +46,8 @@
 #include "Frame.h"
 #include "System.h"
 #include "Tracking.h"
+#include "Ellipsoid.h"
+#include "MapObject.h"
 
 #endif
 namespace ORB_SLAM2{
@@ -60,6 +62,14 @@ public:
 	friend class Osmap;
 	OsmapMapPoint(Osmap*);
 };
+
+
+class OsmapMapObject: public MapObject{
+public:
+	friend class Osmap;
+	OsmapMapObject(Osmap*);
+};
+
 
 /**
  * Wrapped KeyFrame to let Osmap access protected properties without modifying KeyFrame code.
@@ -261,6 +271,7 @@ public:
    * This vector is consumed in serialize
    */
   vector<OsmapMapPoint*> vectorMapPoints;
+  vector<OsmapMapObject*> vectorMapObjects;
 
   /**
    * Buffer where map's keyframes are stored in ascending id order, to save them to file in this order.
@@ -327,6 +338,8 @@ public:
    */
   int MapPointsSave(string filename);
 
+  int MapObjectsSave(string filename);
+
   /**
    * Load the content of a "map.mappoints" file to vectorMapPoints.
    * @param filename full name of the file to open.
@@ -366,6 +379,8 @@ public:
    * This is done as the first step to save mappoints.
    */
   void getMapPointsFromMap();
+
+  void getMapObjectsFromMap();
 
   /**
    * Populate Map.mspMapPoints with MapPoints from vectorMapPoints.
@@ -569,6 +584,20 @@ public:
   void deserialize(const SerializedPose&, Mat&);
 
 
+  // ELlipsoid ====================================================================================================
+
+  /**
+  Serialize a Eigen::Matrix4d representing a pose an ellipsoid (dual matrix).
+  */
+  void serialize(const Ellipsoid&, SerializedEllipsoid*);
+
+
+  /**
+  Reconstruct a Eigen::MAtrix4d representing an ellipsoid.
+  */
+  void deserialize(const SerializedEllipsoid&, Ellipsoid&);
+
+
   // Position vector ====================================================================================================
 
   /**
@@ -637,6 +666,15 @@ public:
   */
   int deserialize(const SerializedMappointArray &, vector<OsmapMapPoint*>&);
 
+
+
+  // MapPoint ====================================================================================================
+
+  /**
+  Serializes a MapPoint, according to options.
+  */
+  void serialize(const OsmapMapObject&, SerializedMapobject*);
+  int serialize(const vector<OsmapMapObject*>&, SerializedMapobjectArray &);
 
 
   // KeyFrame ====================================================================================================
