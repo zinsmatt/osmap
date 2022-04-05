@@ -64,6 +64,10 @@ message SerializedKArray{
   repeated SerializedK k = 1;
 }
 
+message SerializedEllipsoid {
+  repeated float element = 1; // 4x4 matrix
+}
+
 // MapPoint, all fields optional, should provide position at least.
 message SerializedMappoint{
   uint32 id                       = 1;  // mnId
@@ -75,6 +79,16 @@ message SerializedMappoint{
 
 message SerializedMappointArray{
   repeated SerializedMappoint mappoint = 1;
+}
+
+// MapObject, all fields optional, should provide position at least.
+message SerializedMapobject{
+  uint32 id                       = 1;  // id of the track
+  SerializedEllipsoid ellipsoid   = 2;  // ellipsoid
+}
+
+message SerializedMapobjectArray{
+  repeated SerializedMapobject mapobject = 1;
 }
 
 
