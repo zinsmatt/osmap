@@ -83,14 +83,39 @@ message SerializedMappointArray{
 
 // MapObject, all fields optional, should provide position at least.
 message SerializedMapobject{
-  uint32 id                       = 1;  // id of the track
-  SerializedEllipsoid ellipsoid   = 2;  // ellipsoid
+  SerializedEllipsoid ellipsoid   = 1;  // ellipsoid
+  uint32 object_track_id          = 2;  // id of the track
 }
 
 message SerializedMapobjectArray{
   repeated SerializedMapobject mapobject = 1;
 }
 
+
+message SerializedBBox2{
+  float xmin = 1;
+  float ymin = 2;
+  float xmax = 3;
+  float ymax = 4;
+}
+
+
+// ObjectTrack, all fields optional, should provide position at least.
+message SerializedObjectTrack{
+  uint32 id                         = 1;  // id of the track
+  uint32 cat                        = 2;
+  uint32 last_frame_id              = 3;
+  uint32 color_r                    = 4;
+  uint32 color_g                    = 5;
+  uint32 color_b                    = 6;
+  uint32 status                     = 7;
+  repeated SerializedBBox2 kf_bboxes = 8;
+  repeated uint32 kf_indices        = 9;
+}
+
+message SerializedObjectTrackArray{
+  repeated SerializedObjectTrack objecttrack = 1;
+}
 
 // KeyFrame, all fields optional, should provide pose at least.
 message SerializedKeyframe{

@@ -26,6 +26,7 @@
 #include <vector>
 #include <map>
 #include <bitset>
+#include <memory>
 #include <iterator>
 #include "osmap.pb.h"
 #include <set>
@@ -67,7 +68,27 @@ public:
 class OsmapMapObject: public MapObject{
 public:
 	friend class Osmap;
-	OsmapMapObject(Osmap*);
+	OsmapMapObject(const Ellipsoid& ell);
+
+  Ellipsoid ellipsoid;
+  unsigned object_track_id;
+};
+
+
+// For deserialization first create an OsmapObjectTrack,
+// and then create a real ObjectTracl from it with pointers
+class OsmapObjectTrack: public ObjectTrack{
+public:
+	friend class Osmap;
+	OsmapObjectTrack(Osmap*);
+
+  unsigned int id;
+  unsigned int cat;
+  unsigned int last_frame_id;
+  cv::Scalar color;
+  ObjectTrackStatus status;
+  std::vector<BBox2> kf_bboxes;
+  std::vector<unsigned int> kf_indices;
 };
 
 
@@ -91,7 +112,10 @@ public:
 	friend class Osmap;
 };
 
-
+class OsmapTracking: public Tracking{
+public:
+	friend class Osmap;
+};
 
 /**
  * FEATURES_MESSAGE_LIMIT is the maximum number of features allowed in a single protocol buffer's message, to avoid known size problems in protocol buffers.
@@ -229,6 +253,7 @@ public:
 
   /** ORB-SLAM2 map to be serialized. */
   OsmapMap &map;
+  OsmapTracking &tracker;
 
   /** Database of keyframes to be build after loading. */
   KeyFrameDatabase &keyFrameDatabase;
@@ -272,6 +297,9 @@ public:
    */
   vector<OsmapMapPoint*> vectorMapPoints;
   vector<OsmapMapObject*> vectorMapObjects;
+  vector<OsmapObjectTrack*> vectorObjectTracks;
+  vector<MapObject*> vectorMapObjects_out;
+  vector<std::shared_ptr<ObjectTrack>> vectorObjectTracks_out;
 
   /**
    * Buffer where map's keyframes are stored in ascending id order, to save them to file in this order.
@@ -338,13 +366,22 @@ public:
    */
   int MapPointsSave(string filename);
 
-  int MapObjectsSave(string filename);
+
 
   /**
    * Load the content of a "map.mappoints" file to vectorMapPoints.
    * @param filename full name of the file to open.
    */
   int MapPointsLoad(string filename);
+
+  int MapObjectsSave(string filename);
+
+  int MapObjectsLoad(string filename);
+
+  int ObjectTracksSave(string filename);
+
+  int ObjectTracksLoad(string filename);
+
 
   /**
    * Save the content of vectorKeyFrames to file like "map.keyframes".
@@ -381,6 +418,10 @@ public:
   void getMapPointsFromMap();
 
   void getMapObjectsFromMap();
+  void setMapObjectToMap();
+
+  void getObjectTracksFromTracker();
+  void setObjectTracksToTracker();
 
   /**
    * Populate Map.mspMapPoints with MapPoints from vectorMapPoints.
@@ -598,6 +639,21 @@ public:
   void deserialize(const SerializedEllipsoid&, Ellipsoid&);
 
 
+  // BBox2 ====================================================================================================
+
+  /**
+  Serialize a BBox2
+  */
+  void serialize(const BBox2&, SerializedBBox2*);
+
+
+  /**
+  Reconstruct a BBox2
+  */
+  void deserialize(const SerializedBBox2&, BBox2&);
+
+
+
   // Position vector ====================================================================================================
 
   /**
@@ -668,14 +724,23 @@ public:
 
 
 
-  // MapPoint ====================================================================================================
+  // MapObject ====================================================================================================
 
   /**
-  Serializes a MapPoint, according to options.
+  Serializes a MapObject, according to options.
   */
   void serialize(const OsmapMapObject&, SerializedMapobject*);
+  OsmapMapObject *deserialize(const SerializedMapobject &serializedMapobject);
   int serialize(const vector<OsmapMapObject*>&, SerializedMapobjectArray &);
+  int deserialize(const SerializedMapobjectArray &serializedMapobjectArray, vector<OsmapMapObject*>& vectorMapObjects);
 
+
+
+  // ObjectTrack ====================================================================================================
+  void serialize(const OsmapObjectTrack&, SerializedObjectTrack*);
+  OsmapObjectTrack *deserialize(const SerializedObjectTrack &serializedObjectTrack);
+  int serialize(const vector<OsmapObjectTrack*>&, SerializedObjectTrackArray &);
+  int deserialize(const SerializedObjectTrackArray &serializedObjectTrackArray, vector<OsmapObjectTrack*>& vectorObjectTracks);
 
   // KeyFrame ====================================================================================================
 
