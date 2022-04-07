@@ -271,6 +271,10 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 		}
 	}
 
+	// Save current directory
+	char buf[4096];
+	getcwd(buf, 4096);
+	std::string current_dir(buf);
 
 	// Change directory
 	string pathDirectory;
@@ -339,6 +343,10 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 		// Invoked after viewer.Release() because of mutex.
 		system.mpFrameDrawer->Update(system.mpTracker);
 	}
+
+	// Go back to the initial working directory
+	if(current_dir != "")
+		chdir(current_dir.c_str());
 }
 
 int Osmap::MapPointsSave(string filename){
@@ -1156,7 +1164,7 @@ void Osmap::serialize(const OsmapObjectTrack &objecttrack, SerializedObjectTrack
   serializedObjectTrack->set_color_g(color[1]);
   serializedObjectTrack->set_color_b(color[2]);
   auto status = objecttrack.status_;
-  int status_int;
+  int status_int = 0;
   if (status == ObjectTrackStatus::BAD)
 	status_int = 0;
   else if (status == ObjectTrackStatus::ONLY_2D)
