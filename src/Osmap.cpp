@@ -29,6 +29,7 @@
 #include "Osmap.h"
 #include "ObjectTrack.h"
 #include "Utils.h"
+#include "System.h"
 
 // Option check macro
 #define OPTION(OP) if(options[OP]) headerFile << #OP;
@@ -215,7 +216,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 	// Initialize currentFrame via calling GrabImageMonocular just in case, with a dummy image.
 	if(system.mpTracker->mState == ORB_SLAM2::Tracking::NO_IMAGES_YET){
 		Mat m = Mat::zeros(100, 100, CV_8U);
-		system.mpTracker->GrabImageMonocular(m, 0.0);
+		system.mpTracker->GrabImageMonocular(m, 0.0, ORB_SLAM2::enumForceRelocalization::NO_FORCE);
 	}
 #endif
 
@@ -576,7 +577,8 @@ void Osmap::getObjectTracksFromTracker(){
 	const auto& ots = tracker.GetObjectTracks();
 	vectorObjectTracks.reserve(ots.size());
 	for (auto ot : ots){
-		if (ot->GetNbObservationsInKeyFrame() > 0) {
+		// save only objects that are in the map
+		if (ot->GetStatus() == ObjectTrackStatus::IN_MAP) {
 			vectorObjectTracks.push_back(static_cast<OsmapObjectTrack*>(ot.get()));
 		}
 	}
