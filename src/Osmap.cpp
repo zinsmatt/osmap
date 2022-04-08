@@ -206,7 +206,7 @@ void Osmap::mapSave(const string givenFilename, bool pauseThreads){
 	// Clear temporary vectors
 	clearVectors();
 
-	if(pauseThreads)
+	if(pauseThreads && system.mpViewer)
 	  system.mpViewer->Release();
 }
 
@@ -228,9 +228,9 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 
 		// Stop LocalMapping and Viewer
 		system.mpLocalMapper->RequestStop();
-		system.mpViewer	    ->RequestStop();
+		if (system.mpViewer) system.mpViewer	    ->RequestStop();
 		while(!system.mpLocalMapper->isStopped()) usleep(1000);
-		while(!system.mpViewer     ->isStopped()) usleep(1000);
+		if (system.mpViewer) while(!system.mpViewer     ->isStopped()) usleep(1000);
 	}
 
 #if !defined OSMAP_DUMMY_MAP && !defined OS1
@@ -244,7 +244,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 #endif
 
 	LOGV(system.mpLocalMapper->isStopped())
-	LOGV(system.mpViewer     ->isStopped())
+	if (system.mpViewer) LOGV(system.mpViewer     ->isStopped())
 
 	string filename;
 	int intOptions;
@@ -338,7 +338,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 		// Resume threads
 
 		// Reactivate viewer.  Do not reactivate localMapper because the system resumes in "only tracking" mode immediatly after loading.
-		system.mpViewer->Release();
+		if (system.mpViewer) system.mpViewer->Release();
 
 		// Tracking do this when going to LOST state.
 		// Invoked after viewer.Release() because of mutex.
