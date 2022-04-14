@@ -828,7 +828,7 @@ void Osmap::rebuild(bool noSetBad){
 		max_id = std::max(max_id, ot->id);
 
 		// create new object track with dummy detection
-		auto new_ot = ObjectTrack::CreateNewObjectTrack(ot->cat, BBox2(), Matrix34d(), 0, dynamic_cast<Tracking*>(&tracker), nullptr);
+		auto new_ot = ObjectTrack::CreateNewObjectTrack(ot->cat, BBox2(), 0.0, Matrix34d(), 0, dynamic_cast<Tracking*>(&tracker), nullptr);
 		new_ot->SetId(ot->id);
 		new_ot->SetColor(ot->color);
 		new_ot->SetStatus(ot->status);
@@ -844,6 +844,7 @@ void Osmap::rebuild(bool noSetBad){
 			}
 			if (kf) {
 				new_ot->AddDetection(ot->kf_bboxes[i],
+									 ot->GetLastObsScore(),
 									 ORB_SLAM2::cvToEigenMatrix<double, float, 3, 4>(kf->GetPose()),
 									 kf->mnId,
 									 kf);
