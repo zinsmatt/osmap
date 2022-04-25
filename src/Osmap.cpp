@@ -62,9 +62,9 @@ Osmap::Osmap(System &_system):
 	 *  - mTcw (must be provided, error if not)
 	 *  - Grid (already exists)
 	 */
-	Frame dummyFrame;
-	dummyFrame.mTcw = Mat::eye(4, 4, CV_32F);
-	pRefKF = new KeyFrame(dummyFrame, &map, &keyFrameDatabase);
+    Frame dummyFrame;
+    dummyFrame.mTcw = Mat::eye(4, 4, CV_32F);
+    pRefKF = new KeyFrame(dummyFrame, &map, &keyFrameDatabase);
 
 #endif
 };
@@ -216,7 +216,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 	// Initialize currentFrame via calling GrabImageMonocular just in case, with a dummy image.
 	if(system.mpTracker->mState == ORB_SLAM2::Tracking::NO_IMAGES_YET){
 		Mat m = Mat::zeros(100, 100, CV_8U);
-		system.mpTracker->GrabImageMonocular(m, 0.0, ORB_SLAM2::enumForceRelocalization::NO_FORCE);
+		system.mpTracker->GrabImageMonocular(m, 0.0, {}, ORB_SLAM2::enumForceRelocalization::NO_FORCE);
 	}
 #endif
 
