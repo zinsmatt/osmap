@@ -111,6 +111,7 @@ message SerializedObjectTrack{
   uint32 status                     = 7;
   repeated SerializedBBox2 kf_bboxes = 8;
   repeated uint32 kf_indices        = 9;
+  repeated double kf_scores = 10;
 }
 
 message SerializedObjectTrackArray{

@@ -89,6 +89,7 @@ public:
   ObjectTrackStatus status;
   std::vector<BBox2> kf_bboxes;
   std::vector<unsigned int> kf_indices;
+  std::vector<double> kf_scores;
 };
 
 

@@ -844,7 +844,7 @@ void Osmap::rebuild(bool noSetBad){
 			}
 			if (kf) {
 				new_ot->AddDetection(ot->kf_bboxes[i],
-									 ot->GetLastObsScore(),
+									 ot->kf_scores[i],
 									 ORB_SLAM2::cvToEigenMatrix<double, float, 3, 4>(kf->GetPose()),
 									 kf->mnId,
 									 kf);
@@ -1182,6 +1182,10 @@ void Osmap::serialize(const OsmapObjectTrack &objecttrack, SerializedObjectTrack
     serialize(it.second, serializedObjectTrack->add_kf_bboxes());
     serializedObjectTrack->add_kf_indices(it.first->mnId);
   }
+  const auto& kf_scores = objecttrack.keyframes_scores_;
+  for (auto it : kf_scores) {
+    serializedObjectTrack->add_kf_scores(it.second);
+  }
 }
 
 OsmapObjectTrack *Osmap::deserialize(const SerializedObjectTrack &serializedObjectTrack){
@@ -1199,9 +1203,11 @@ OsmapObjectTrack *Osmap::deserialize(const SerializedObjectTrack &serializedObje
   size_t n = serializedObjectTrack.kf_bboxes_size();
   pObjecttrack->kf_bboxes.resize(n);
   pObjecttrack->kf_indices.resize(n);
+  pObjecttrack->kf_scores.resize(n);
   for (size_t i = 0; i < n; ++i) {
     deserialize(serializedObjectTrack.kf_bboxes(i), pObjecttrack->kf_bboxes[i]);
     pObjecttrack->kf_indices[i] = serializedObjectTrack.kf_indices(i);
+    pObjecttrack->kf_scores[i] = serializedObjectTrack.kf_scores(i);
   }
   // retrieve keyframes_bboxes
   return pObjecttrack;
