@@ -28,6 +28,7 @@
 
 #include "Osmap.h"
 #include "ObjectTrack.h"
+#include "LocalObjectMapping.h"
 #include "Utils.h"
 #include "System.h"
 
@@ -223,13 +224,16 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 	if(pauseThreads){
 		// Reset thr tracker to clean the map
 		system.mpLocalMapper->Release();	// Release local mapper just in case it's stopped, because if it is stopped it can't be reset
+		if (system.local_object_mapper_) system.local_object_mapper_->Release();	// Release local mapper just in case it's stopped, because if it is stopped it can't be reset
 		system.mpTracker->Reset();
 		// Here the system is reset, state is NO_IMAGE_YET
 
 		// Stop LocalMapping and Viewer
 		system.mpLocalMapper->RequestStop();
+		if (system.local_object_mapper_) system.local_object_mapper_->RequestStop();
 		if (system.mpViewer) system.mpViewer	    ->RequestStop();
 		while(!system.mpLocalMapper->isStopped()) usleep(1000);
+		if (system.local_object_mapper_) while(!system.local_object_mapper_->isStopped()) usleep(1000);
 		if (system.mpViewer) while(!system.mpViewer     ->isStopped()) usleep(1000);
 	}
 
@@ -244,6 +248,7 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 #endif
 
 	LOGV(system.mpLocalMapper->isStopped())
+	if (system.local_object_mapper_) LOGV(system.local_object_mapper_->isStopped())
 	if (system.mpViewer) LOGV(system.mpViewer     ->isStopped())
 
 	string filename;
@@ -339,6 +344,10 @@ void Osmap::mapLoad(string yamlFilename, bool noSetBad, bool pauseThreads){
 
 		// Reactivate viewer.  Do not reactivate localMapper because the system resumes in "only tracking" mode immediatly after loading.
 		if (system.mpViewer) system.mpViewer->Release();
+
+		// If a map is loaded, local mapping and local object mapping are disabled
+		// system.mpLocalMapper->Release();
+		// system.local_object_mapper_->Release();
 
 		// Tracking do this when going to LOST state.
 		// Invoked after viewer.Release() because of mutex.
@@ -1196,8 +1205,8 @@ OsmapObjectTrack *Osmap::deserialize(const SerializedObjectTrack &serializedObje
   pObjecttrack->color = cv::Scalar(serializedObjectTrack.color_r(),
 								   serializedObjectTrack.color_g(),
 								   serializedObjectTrack.color_b());
-  std::vector<ObjectTrackStatus> status = {ObjectTrackStatus::ONLY_2D, ObjectTrackStatus::INITIALIZED,
-										   ObjectTrackStatus::IN_MAP, ObjectTrackStatus::BAD};
+  std::vector<ObjectTrackStatus> status = {ObjectTrackStatus::BAD, ObjectTrackStatus::ONLY_2D, 
+  										   ObjectTrackStatus::INITIALIZED, ObjectTrackStatus::IN_MAP};
   pObjecttrack->status = status[serializedObjectTrack.status()];
   assert(serializedObjectTrack.kf_bboxes_size() == serializedObjectTrack.kf_indices_size());
   size_t n = serializedObjectTrack.kf_bboxes_size();
